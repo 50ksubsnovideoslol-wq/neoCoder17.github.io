@@ -1,289 +1,256 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Clashle - Clash Royale Wordle</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #1e1e1e;
-        color: white;
-        text-align: center;
-        margin: 0;
-        padding: 0;
-    }
-
-    h1 {
-        font-size: 40px;
-        margin-top: 20px;
-    }
-
-    #board {
-        display: grid;
-        grid-template-columns: repeat(5, 60px);
-        grid-gap: 10px;
-        justify-content: center;
-        margin-top: 30px;
-    }
-
-    .tile {
-        width: 60px;
-        height: 60px;
-        border: 2px solid #555;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        font-weight: bold;
-        text-transform: uppercase;
-        background-color: #2c2c2c;
-    }
-
-    .correct { background-color: #12c923 !important; }
-    .present { background-color: #e3d312 !important; }
-    .absent { background-color: #4a4a4a !important; }
-
-    /* Keyboard */
-    #keyboard {
-        margin-top: 20px;
-    }
-    .key-row {
-        display: flex;
-        justify-content: center;
-        margin: 5px 0;
-    }
-    .key {
-        padding: 15px 12px;
-        margin: 3px;
-        background: #333;
-        border-radius: 6px;
-        cursor: pointer;
-        user-select: none;
-        font-size: 18px;
-    }
-    .key:active {
-        transform: scale(1.1);
-    }
-
-    /* Hint GUI */
-    #hintBox {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 300px;
-        background: #222;
-        padding: 20px;
-        border-radius: 10px;
-        border: 2px solid #e3d312;
-        display: none;
-    }
-    #hintBox h2 { margin-top: 0; }
-    #closeHint {
-        margin-top: 10px;
-        padding: 10px 20px;
-        background: #e33;
-        cursor: pointer;
-        border-radius: 6px;
-    }
-
-    #hintBtn {
-        margin-top: 25px;
-        padding: 12px 20px;
-        background: #e3d312;
-        color: black;
-        cursor: pointer;
-        border-radius: 10px;
-        font-size: 18px;
-        font-weight: bold;
-    }
-
-    #credits {
-        margin-top: 40px;
-        font-size: 14px;
-        opacity: 0.7;
-    }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Clashle — Clash Royale Wordle</title>
+  <style>
+    body { margin:0; padding:20px; font-family: sans-serif; background: #0f1a2b; color: #e0eaff; display:flex; flex-direction:column; align-items:center; }
+    h1 { margin:0 0 8px; }
+    #desc { margin-bottom:16px; }
+    #board { display: grid; grid-gap:6px; margin-bottom:16px; }
+    .tile { width:50px; height:50px; background:#1b273b; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:20px; text-transform: uppercase; }
+    .tile.correct { background: #4caf50; color: #031a0f; }
+    .tile.present { background: #e1c23a; color: #031a0f; }
+    .tile.absent { background: #3a4a5a; color: #cfe6ff; opacity:0.9; }
+    #keyboard { display:flex; flex-wrap: wrap; justify-content: center; gap:4px; margin-bottom:16px; }
+    .key { padding:10px 14px; background:#203040; border-radius:4px; cursor:pointer; user-select:none; color:#e0eaff; font-weight:bold; }
+    .key:active { transform: scale(1.1); }
+    #hintBtn { padding:8px 16px; background:#4e7bef; border:none; border-radius:4px; color:white; cursor:pointer; }
+    #hintBox { position: fixed; top:50%; left:50%; transform: translate(-50%,-50%); background:#102030; padding:20px; border:2px solid #4e7bef; border-radius:8px; display:none; color:#e0eaff; max-width:90%; }
+    #hintBox h2 { margin-top:0; }
+    #closeHint { margin-top:12px; padding:6px 12px; background:#b04040; border:none; border-radius:4px; color:white; cursor:pointer; }
+    #credits { margin-top:24px; font-size:14px; opacity:0.7; }
+  </style>
 </head>
 <body>
 
-<h1>CLASHLE</h1>
-<p>This is a Clash Royale Wordle. Guess the character!</p>
+  <h1>Clashle</h1>
+  <div id="desc">This is a Clash Royale wordle. Guess the card name! Grid adjusts to name length.</div>
 
-<div id="board"></div>
+  <div id="board"></div>
 
-<div id="keyboard"></div>
+  <div id="keyboard"></div>
 
-<button id="hintBtn">HINT</button>
+  <button id="hintBtn">Show Hint</button>
 
-<div id="hintBox">
+  <div id="hintBox">
     <h2>Hint</h2>
     <p id="hintText"></p>
-    <div id="closeHint">Close</div>
-</div>
+    <button id="closeHint">Close</button>
+  </div>
 
-<p id="credits">CREDITS / OWNER: ollie / neocoder17</p>
+  <div id="credits">CREDITS / OWNER: ollie / neocoder17</div>
 
 <script>
-/* ─────────────────────────────────────────────
-   ALL CLASH ROYALE CARDS + HINTS
-────────────────────────────────────────────── */
-const cards = [
-    { name: "knight", hint: "A tanky melee troop with good single-target damage." },
-    { name: "archer", hint: "Ranged attackers that shoot arrows from a distance." },
-    { name: "wizard", hint: "Deals high splash damage with fireballs." },
-    { name: "pekka", hint: "Very high damage melee unit with massive health." },
-    { name: "hog", hint: "Fast unit that targets buildings only." },
-    { name: "zap", hint: "Stuns enemies briefly and deals instant damage." },
-    { name: "arrows", hint: "Covers a large area with arrow damage." },
-    { name: "miner", hint: "Burrows underground and appears anywhere on arena." },
-    { name: "golem", hint: "Huge tank that splits into golemites on death." },
-    { name: "princess", hint: "Very long-range archer with splash damage." },
-    { name: "valkyrie", hint: "Swings an axe in a circle, great for swarms." },
+// ─────────────────────────────────────────────
+// CARDS + HINTS LIST — fill this with all cards
+// ─────────────────────────────────────────────
+const ALL_CARDS = [
+  // Example entries. Add one object per card, with .name and .hint
+  { name: "Knight", hint: "A sturdy melee troop — balanced and cheap." },
+  { name: "Archers", hint: "Two ranged attackers, good vs air & ground." },
+  { name: "Wizard", hint: "Deals splash damage with fireballs." },
+  { name: "P.E.K.K.A.", hint: "Heavy armored melee — huge damage, slow speed." },
+  { name: "Hog Rider", hint: "Fast building-targetter — rushes towers." },
+  { name: "Goblin Barrel", hint: "Drops goblins onto enemy tower — surprise attack." },
+  { name: "Baby Dragon", hint: "Flying splash unit — good vs swarms and air." },
+  // … continue: add every card here …
 ];
 
-/* Random card */
-let target = cards[Math.floor(Math.random() * cards.length)];
-console.log("Clashle Target:", target.name);
-
-/* Wordle settings */
-const maxGuesses = 6;
-let currentRow = 0;
-let currentCol = 0;
-const wordLength = target.name.length;
-
-const board = document.getElementById("board");
-const keyboard = document.getElementById("keyboard");
-
-/* ─────────────────────────────────────────────
-   BUILD BOARD
-────────────────────────────────────────────── */
-function buildBoard() {
-    board.innerHTML = "";
-    for (let r = 0; r < maxGuesses; r++) {
-        for (let c = 0; c < wordLength; c++) {
-            const tile = document.createElement("div");
-            tile.className = "tile";
-            tile.id = `tile-${r}-${c}`;
-            board.appendChild(tile);
-        }
-    }
+// Utility: normalize name (remove non-letters, uppercase)
+function normalize(s) {
+  return s.normalize('NFKD').replace(/[^A-Za-z]/g, '').toUpperCase();
 }
+
+// Build normalized card-list
+const cards = ALL_CARDS.map(c => ({
+  name: c.name,
+  key: normalize(c.name),
+  hint: c.hint
+}));
+
+// GAME STATE
+const MAX_GUESSES = 6;
+let target = null;
+let board = [];
+let curRow = 0;
+let curCol = 0;
+let solved = false;
+
+// DOM
+const boardEl = document.getElementById('board');
+const keyboardEl = document.getElementById('keyboard');
+const hintBtn = document.getElementById('hintBtn');
+const hintBox = document.getElementById('hintBox');
+const hintText = document.getElementById('hintText');
+const closeHint = document.getElementById('closeHint');
+
+// Pick random target
+function pickTarget(){
+  const c = cards[Math.floor(Math.random() * cards.length)];
+  target = c;
+  console.log("Target:", target.name, target.key);
+}
+
+// Build board (grid adjusts to name length)
+function buildBoard(){
+  board = Array.from({length: MAX_GUESSES}, () =>
+    Array.from({length: target.key.length}, () => '')
+  );
+  curRow = 0; curCol = 0; solved = false;
+
+  boardEl.style.gridTemplateColumns = `repeat(${target.key.length}, 50px)`;
+  renderBoard();
+}
+
+// Render board
+function renderBoard(){
+  boardEl.innerHTML = '';
+  for(let r=0; r<MAX_GUESSES; r++){
+    for(let c=0; c<target.key.length; c++){
+      const div = document.createElement('div');
+      div.className = 'tile';
+      div.textContent = board[r][c];
+      boardEl.appendChild(div);
+    }
+  }
+}
+
+// Build on-screen keyboard
+function buildKeyboard(){
+  keyboardEl.innerHTML = '';
+  const rows = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
+  rows.forEach(rs => {
+    const rowDiv = document.createElement('div');
+    for(const ch of rs){
+      const k = document.createElement('div');
+      k.className = 'key';
+      k.textContent = ch;
+      k.onclick = () => handleKey(ch);
+      rowDiv.appendChild(k);
+    }
+    keyboardEl.appendChild(rowDiv);
+  });
+  // add Enter & Backspace
+  const controls = document.createElement('div');
+  controls.style.marginTop = '6px';
+  const enter = document.createElement('div');
+  enter.className = 'key';
+  enter.textContent = 'ENTER';
+  enter.onclick = ()=> handleKey('Enter');
+  controls.appendChild(enter);
+  const del = document.createElement('div');
+  del.className = 'key';
+  del.textContent = 'DEL';
+  del.onclick = ()=> handleKey('Backspace');
+  controls.appendChild(del);
+  keyboardEl.appendChild(controls);
+}
+
+// Handle key (on-screen or physical)
+function handleKey(k){
+  if (solved) return;
+
+  if (k === 'Enter') { submitGuess(); return; }
+  if (k === 'Backspace') { deleteLetter(); return; }
+  if (/^[A-Za-z]$/.test(k)) {
+    if(curCol < target.key.length){
+      board[curRow][curCol] = k.toUpperCase();
+      curCol++;
+      renderBoard();
+    }
+  }
+}
+
+// Delete letter
+function deleteLetter(){
+  if(curCol > 0){
+    curCol--;
+    board[curRow][curCol] = '';
+    renderBoard();
+  }
+}
+
+// Submit guess
+function submitGuess(){
+  if (curCol < target.key.length) return;  // incomplete
+  const guess = board[curRow].join('').toUpperCase();
+  evaluateGuess(guess);
+}
+
+// Evaluate guess
+function evaluateGuess(guess){
+  const targetArr = target.key.split('');
+  const result = Array(guess.length).fill('absent');
+
+  // first pass — correct
+  for(let i=0;i<guess.length;i++){
+    if(guess[i] === targetArr[i]){
+      result[i] = 'correct';
+      targetArr[i] = null;
+    }
+  }
+  // second pass — present
+  for(let i=0;i<guess.length;i++){
+    if(result[i] === 'correct') continue;
+    const idx = targetArr.indexOf(guess[i]);
+    if(idx !== -1){
+      result[i] = 'present';
+      targetArr[idx] = null;
+    }
+  }
+
+  // color tiles
+  const rowChilds = boardEl.childNodes;
+  for(let i=0;i<guess.length;i++){
+    const tile = rowChilds[curRow * target.key.length + i];
+    tile.classList.add(result[i]);
+  }
+
+  if(guess === target.key){
+    solved = true;
+    setTimeout(()=> {
+      alert("You guessed it! It was “" + target.name + "”");
+      startNew();
+    }, 300);
+    return;
+  }
+  curRow++;
+  curCol = 0;
+  if(curRow >= MAX_GUESSES){
+    setTimeout(()=> {
+      alert("Out of tries! The card was “" + target.name + "”");
+      startNew();
+    }, 300);
+  }
+}
+
+// Start new game
+function startNew(){
+  pickTarget();
+  buildBoard();
+}
+
+// Show hint
+hintBtn.onclick = ()=>{
+  hintText.textContent = target.hint || "(no hint available)";
+  hintBox.style.display = 'block';
+};
+closeHint.onclick = ()=> hintBox.style.display = 'none';
+
+// Physical keyboard support
+window.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') handleKey('Enter');
+  else if(e.key === 'Backspace') handleKey('Backspace');
+  else if(/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+});
+
+// INIT
+buildKeyboard();
+pickTarget();
 buildBoard();
 
-/* ─────────────────────────────────────────────
-   BUILD KEYBOARD
-────────────────────────────────────────────── */
-const rows = [
-    ["q","w","e","r","t","y","u","i","o","p"],
-    ["a","s","d","f","g","h","j","k","l"],
-    ["enter","z","x","c","v","b","n","m","del"]
-];
-
-rows.forEach(r => {
-    let rowDiv = document.createElement("div");
-    rowDiv.className = "key-row";
-    r.forEach(key => {
-        let k = document.createElement("div");
-        k.className = "key";
-        k.textContent = key.toUpperCase();
-        k.onclick = () => handleKey(key);
-        rowDiv.appendChild(k);
-    });
-    keyboard.appendChild(rowDiv);
-});
-
-/* ─────────────────────────────────────────────
-   INPUT HANDLING
-────────────────────────────────────────────── */
-document.addEventListener("keydown", (e) => {
-    let key = e.key.toLowerCase();
-    handleKey(key);
-});
-
-function handleKey(key) {
-    if (key === "enter") submitGuess();
-    else if (key === "del" || key === "backspace") deleteLetter();
-    else if (/^[a-z]$/.test(key)) addLetter(key);
-}
-
-function addLetter(letter) {
-    if (currentCol >= wordLength) return;
-    let tile = document.getElementById(`tile-${currentRow}-${currentCol}`);
-    tile.textContent = letter;
-    currentCol++;
-}
-
-function deleteLetter() {
-    if (currentCol === 0) return;
-    currentCol--;
-    let tile = document.getElementById(`tile-${currentRow}-${currentCol}`);
-    tile.textContent = "";
-}
-
-/* ─────────────────────────────────────────────
-   SUBMIT GUESS
-────────────────────────────────────────────── */
-function submitGuess() {
-    if (currentCol < wordLength) return;
-
-    let guess = "";
-    for (let c = 0; c < wordLength; c++) {
-        guess += document.getElementById(`tile-${currentRow}-${c}`).textContent;
-    }
-
-    checkGuess(guess.toLowerCase());
-}
-
-function checkGuess(guess) {
-    for (let c = 0; c < wordLength; c++) {
-        let tile = document.getElementById(`tile-${currentRow}-${c}`);
-        if (guess[c] === target.name[c]) {
-            tile.classList.add("correct");
-        } else if (target.name.includes(guess[c])) {
-            tile.classList.add("present");
-        } else {
-            tile.classList.add("absent");
-        }
-    }
-
-    if (guess === target.name) {
-        alert("Correct! It was " + target.name.toUpperCase());
-        setTimeout(newGame, 400);
-        return;
-    }
-
-    currentRow++;
-    currentCol = 0;
-
-    if (currentRow >= maxGuesses) {
-        alert("Out of tries! The answer was " + target.name.toUpperCase());
-        setTimeout(newGame, 400);
-    }
-}
-
-/* ─────────────────────────────────────────────
-   NEW GAME
-────────────────────────────────────────────── */
-function newGame() {
-    target = cards[Math.floor(Math.random() * cards.length)];
-    console.log("New Clashle Target:", target.name);
-    currentRow = 0;
-    currentCol = 0;
-    buildBoard();
-}
-
-/* ─────────────────────────────────────────────
-   HINT BUTTON
-────────────────────────────────────────────── */
-document.getElementById("hintBtn").onclick = () => {
-    document.getElementById("hintText").textContent = target.hint;
-    document.getElementById("hintBox").style.display = "block";
-};
-
-document.getElementById("closeHint").onclick = () => {
-    document.getElementById("hintBox").style.display = "none";
-};
 </script>
 
 </body>
