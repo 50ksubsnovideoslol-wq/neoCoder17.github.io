@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Clashle — Clash Royale Wordle</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --panel:#0f1724;
+    --accent:#ffd166;
+    --tile-empty:#1b2430;
+    --tile-correct:#3ac37a;
+    --tile-present:#f2b705;
+    --tile-absent:#384a5a;
+    --key-bg:#15202b;
+    --key-fg:#e6eef6;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  body{
+    margin:0;
+    min-height:100vh;
+    background: linear-gradient(180deg,#07102a 0%, #051022 100%);
+    color:var(--key-fg);
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:28px;
+  }
+  .app{
+    width:100%;
+    max-width:920px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));
+    border-radius:12px;
+    padding:22px;
+    box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:14px;
+  }
+  h1{
+    margin:0;
+    font-size:22px;
+    letter-spacing:0.5px;
+  }
+  p.desc{
+    margin:8px 0 18px 0;
+    color:#cfe6ff;
+    opacity:0.9;
+  }
+
+  /* Grid */
+  .board{
+    display:grid;
+    gap:8px;
+    justify-content:center;
+    margin: 4px auto 14px;
+  }
+  .row{
+    display:flex;
+    gap:8px;
+  }
+  .tile{
+    width:56px;
+    height:56px;
+    border-radius:8px;
+    background:var(--tile-empty);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    user-select:none;
+  }
+  /* responsive tile size for long words / small screens */
+  .small .tile{ width:44px;height:44px;font-size:16px; }
+  .xsmall .tile{ width:36px;height:36px;font-size:14px; }
+
+  .tile.correct{ background:var(--tile-correct); color:#052014; }
+  .tile.present{ background:var(--tile-present); color:#052014; }
+  .tile.absent{ background:var(--tile-absent); color:#cfe6ff; opacity:0.95; }
+
+  /* Keyboard */
+  .keyboard{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
+    margin-top:8px;
+    user-select:none;
+  }
+  .kb-row{ display:flex; gap:6px; justify-content:center; }
+  .key{
+    min-width:42px;
+    height:54px;
+    border-radius:8px;
+    background:var(--key-bg);
+    color:var(--key-fg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition: transform 90ms ease, background 160ms ease;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3) inset;
+  }
+  .key.wide{ min-width:72px; }
+  .key.pressed{ transform: scale(1.08); }
+  .key.used{ opacity:0.7; }
+
+  /* Hint modal */
+  .hint{
+    margin-top:12px;
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .hint .hint-btn{
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.08);
+    color:var(--key-fg);
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .hint-panel{
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform: translate(-50%,-50%) scale(0.98);
+    min-width:260px;
+    max-width:90%;
+    background:var(--panel);
+    padding:14px;
+    border-radius:10px;
+    box-shadow:0 14px 40px rgba(0,0,0,0.6);
+    display:none;
+    z-index:40;
+  }
+  .hint-panel.show{ display:block; animation:pop 140ms ease; transform: translate(-50%,-50%) scale(1); }
+  @keyframes pop { from { transform: translate(-50%,-50%) scale(.98); opacity:0 } to { transform: translate(-50%,-50%) scale(1); opacity:1 } }
+  .hint-panel .close{
+    position:absolute;
+    right:10px;
+    top:8px;
+    background:transparent;
+    border:0;
+    color:#fff;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .hint-panel h3{ margin:0 0 8px 0; font-size:18px; }
+  .hint-panel p{ margin:6px 0; color:#dbefff; opacity:0.95; }
+
+  .credits { margin-top:12px; font-size:13px; color:#9ec7ff; opacity:0.9; text-align:center; }
+  .footer-note{ font-size:12px; margin-top:8px; color:#9fbbe0; opacity:0.8; text-align:center; }
+
+  /* smaller screen adjustments */
+  @media (max-width:640px){
+    .tile{ width:44px; height:44px; font-size:18px; }
+    .key{ min-width:36px; height:48px; font-size:13px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" role="application" aria-label="Clashle — Clash Royale Wordle">
+  <header>
+    <div style="display:flex;flex-direction:column;">
+      <h1>Clashle</h1>
+      <small style="color:#9fc9ff">A Clash Royale Wordle</small>
+    </div>
+  </header>
+
+  <p class="desc">This is a Clash Royale wordle. Guess the Clash card name (spaces removed) — you get 6 tries. Use the on-screen keyboard or your physical keyboard. Pressing a physical key enlarges the matching on-screen key briefly so you know what you pressed.</p>
+
+  <div id="board-wrapper" style="display:flex;flex-direction:column;align-items:center;">
+    <div id="board" class="board" aria-live="polite"></div>
+  </div>
+
+  <div class="keyboard" id="keyboard"></div>
+
+  <div class="hint">
+    <button class="hint-btn" id="hintBtn">Show Hint</button>
+  </div>
+
+  <div class="hint-panel" id="hintPanel" role="dialog" aria-modal="true" aria-hidden="true">
+    <button class="close" id="hintClose">✕</button>
+    <h3>Hint</h3>
+    <p id="hintText">Hint text goes here.</p>
+  </div>
+
+  <div class="credits">CREDITS/OWNER ollie / neocoder17</div>
+  <div class="footer-note">Refresh the page to get a new card.</div>
+</div>
+
+<script>
+/*
+  Clashle — single-file Wordle-like game
+  - variable-length target words (card names without spaces/punctuation)
+  - grid adapts to length
+  - keyboard works on mobile and desktop
+  - physical key presses animate the corresponding on-screen key
+  - hint modal shows a simple hint
+*/
+
+// ----- CARD LIST -----
+// Best-effort comprehensive list of Clash Royale cards (troops, spells, buildings, champions...).
+// Add or edit names here. Names should be plain English names as shown in-game.
+// For gameplay, spaces and punctuation are removed; guesses are compared case-insensitively.
+const CLASH_CARDS = [
+  "Archers","Knight","Bomber","Valkyrie","MiniPekka","Prince","BabyDragon","Skeletons","Giant",
+  "GoblinGang","Musketeer","Witch","P.E.K.K.A","HogRider","Balloon","Wizard","SpearGoblin","Minion",
+  "MinionHorde","Goblin","GiantSkeleton","PrinceDark","RoyalGiant","Tesla","InfernoTower","Cannon","BombTower",
+  "ArcherQueen","Barbarian","BarbarianHut","Barbarians","GoblinCage","GoblinHut","Fireball","Zap","Lightning",
+  "Earthquake","Poison","Freeze","Rage","Mirror","Clone","GoblinBarrel","Tornado","ElectroWizard","ElectroDragon",
+  "Sparky","IceWizard","Lumberjack","Bats","RoyalHogs","Furnace","ElixirCollector","SkeletonArmy","GoblinGiant",
+  "DarkPrince","MagicArcher","Hunter","RamRider","RoyalRecruit","Zappies","NightWitch","Bandit","Princess",
+  "SkeletonBalloon","ThreeMusketeers","Graveyard","CannonCart","ValkyriePrince","MegaMinion","DarkPrince","Heal",
+  "BattleHealer","RoyalGhost","MegaKnight","SkeletonKing","Monk","Fisherman","ElectroGiant","Archer","SpearGoblin",
+  "IceSpirit","FireSpirit","KnightMayor","Golem","MiniGolem","WallBreaker","CloneSpell","Bandit","Rascals",
+  "HealSpirit","GoblinBarrel","GoblinDrill","Mortar","Tesla","Bombtower","ZAP","Rocket","Hunter","FlyingMachine",
+  "Mortar","CoffinRider","IceGolem","CannonCart","RoyalRecruit","RamRider","Earthquake","Heal","MagicArcher",
+  "ElixirGolem","ElectroSpirit","SkeletonKing","Princess","Peasant","MightyMiner","Monument","Rage","BarbarianBarrel",
+  "SkeletonKing","Glue","Nightmare","Lumberjack","SkeletonBarrel","RoyalDelivery","RoyalGhost","Windmill","Firecracker",
+  // Note: The above list is a large sample. If any card is missing, you can add it to this array.
+];
+
+// Clean and dedupe the list, prepare matchable targets
+function normalizeName(name){
+  // remove non-letter characters, normalize unicode, keep letters only
+  return name
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z]/g,'') // remove spaces, punctuation, numbers
+    .toUpperCase();
+}
+const cardObjects = CLASH_CARDS.map(name => ({
+  name: name,
+  key: normalizeName(name)
+})).filter(c => c.key.length >= 2);
+
+// If no cards (unlikely), fallback
+if(cardObjects.length === 0){
+  cardObjects.push({name:"KNIGHT", key:"KNIGHT"});
+}
+
+// ----- GAME STATE -----
+const MAX_TRIES = 6;
+let target = null;
+let targetKey = "";
+let board = []; // array of rows, each row is array of letters
+let currentRow = 0;
+let currentCol = 0;
+let solved = false;
+
+// DOM references
+const boardEl = document.getElementById('board');
+const keyboardEl = document.getElementById('keyboard');
+const hintBtn = document.getElementById('hintBtn');
+const hintPanel = document.getElementById('hintPanel');
+const hintText = document.getElementById('hintText');
+const hintClose = document.getElementById('hintClose');
+
+// pick target on load
+function pickTarget(){
+  const pick = cardObjects[Math.floor(Math.random()*cardObjects.length)];
+  target = pick;
+  targetKey = pick.key; // uppercase, letters only
+}
+pickTarget();
+
+// build empty board based on target length
+function buildBoard(){
+  board = [];
+  currentRow = 0;
+  currentCol = 0;
+  solved = false;
+  for(let i=0;i<MAX_TRIES;i++){
+    board.push(new Array(targetKey.length).fill(''));
+  }
+  renderBoard();
+  buildKeyboard();
+  updateHintText();
+}
+function renderBoard(){
+  boardEl.innerHTML = "";
+  boardEl.className = "board";
+  // adjust sizing classes for long words
+  if(targetKey.length > 10) boardEl.classList.add('xsmall');
+  else if(targetKey.length > 7) boardEl.classList.add('small');
+
+  for(let r=0;r<MAX_TRIES;r++){
+    const row = document.createElement('div');
+    row.className = 'row';
+    for(let c=0;c<targetKey.length;c++){
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.row = r;
+      tile.dataset.col = c;
+      tile.textContent = board[r][c] || '';
+      row.appendChild(tile);
+    }
+    boardEl.appendChild(row);
+  }
+}
+
+// build on-screen keyboard (A-Z plus Enter/Delete)
+const KEY_LAYOUT = [
+  "QWERTYUIOP".split(''),
+  "ASDFGHJKL".split(''),
+  ["Enter","Z","X","C","V","B","N","M","Backspace"]
+];
+
+function buildKeyboard(){
+  keyboardEl.innerHTML = "";
+  KEY_LAYOUT.forEach(row=>{
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kb-row';
+    row.forEach(k=>{
+      const keyEl = document.createElement('div');
+      keyEl.className = 'key';
+      if(k === "Enter" || k === "Backspace") keyEl.classList.add('wide');
+      keyEl.textContent = k === "Backspace" ? "⌫" : k;
+      keyEl.dataset.key = k;
+      keyEl.addEventListener('click', ()=>onScreenKeyPress(k));
+      rowEl.appendChild(keyEl);
+    });
+    keyboardEl.appendChild(rowEl);
+  });
+}
+
+// on-screen key handler (mobile/touch)
+function onScreenKeyPress(k){
+  if(solved) return;
+  if(k === "Enter") return submitGuess();
+  if(k === "Backspace") return handleBackspace();
+  insertLetter(k);
+  animateKey(k);
+}
+
+// insert letter into current tile
+function insertLetter(letter){
+  if(currentCol >= targetKey.length) return;
+  board[currentRow][currentCol] = letter.toUpperCase();
+  currentCol++;
+  renderBoard();
+}
+
+// backspace
+function handleBackspace(){
+  if(currentCol <= 0) return;
+  currentCol--;
+  board[currentRow][currentCol] = '';
+  renderBoard();
+}
+
+// submit guess
+function submitGuess(){
+  if(solved) return;
+  const guess = board[currentRow].join('').toUpperCase();
+  if(guess.length !== targetKey.length){
+    flashRow(currentRow);
+    return;
+  }
+  // check guess
+  const evaluation = evaluateGuess(guess, targetKey);
+  // update tile classes
+  applyEvaluationToRow(currentRow, evaluation);
+  if(guess === targetKey){
+    solved = true;
+    setTimeout(()=> alert(`Nice! You guessed "${target.name}"`), 150);
+    return;
+  }
+  currentRow++;
+  currentCol=0;
+  if(currentRow >= MAX_TRIES){
+    setTimeout(()=> alert(`Out of tries! The answer was "${target.name}".`), 150);
+  }
+  renderBoard();
+}
+
+// evaluate guess: returns array of "correct","present","absent"
+function evaluateGuess(guess, target){
+  // standard Wordle algorithm: mark greens, then yellows
+  const result = new Array(guess.length).fill('absent');
+  const targetChars = target.split('');
+  // first pass for correct
+  for(let i=0;i<guess.length;i++){
+    if(guess[i] === targetChars[i]){
+      result[i] = 'correct';
+      targetChars[i] = null; // consume
+    }
+  }
+  // second pass for present
+  for(let i=0;i<guess.length;i++){
+    if(result[i] === 'correct') continue;
+    const idx = targetChars.indexOf(guess[i]);
+    if(idx !== -1){
+      result[i] = 'present';
+      targetChars[idx] = null;
+    }
+  }
+  return result;
+}
+
+// update tile classes for row and update keyboard appearance
+function applyEvaluationToRow(rowIndex, evaluation){
+  const rowEl = boardEl.children[rowIndex];
+  for(let i=0;i<evaluation.length;i++){
+    const tile = rowEl.children[i];
+    tile.classList.remove('correct','present','absent');
+    tile.classList.add(evaluation[i]);
+    tile.dataset.state = evaluation[i];
+  }
+  // update keys
+  const rowGuess = board[rowIndex].join('').toUpperCase();
+  for(let i=0;i<rowGuess.length;i++){
+    const k = rowGuess[i];
+    // find key element
+    const keyEls = keyboardEl.querySelectorAll('.key');
+    keyEls.forEach(el=>{
+      if(el.dataset.key && el.dataset.key.toUpperCase() === k){
+        el.classList.add('used');
+        // color mapping by state (prefer correct > present > absent)
+        const prev = el.dataset.state;
+        const map = {correct:3,present:2,absent:1,undefined:0};
+        const newState = evaluation[i];
+        if(!prev || map[newState] > map[prev]){
+          el.dataset.state = newState;
+          // style colors on keys by state
+          if(newState === 'correct') el.style.background = 'var(--tile-correct)';
+          else if(newState === 'present') el.style.background = 'var(--tile-present)';
+          else if(newState === 'absent') el.style.background = 'var(--tile-absent)';
+        }
+      }
+    });
+  }
+}
+
+// small animation to show error if row incomplete
+function flashRow(r){
+  const rowEl = boardEl.children[r];
+  rowEl.animate([
+    { transform:'translateY(0px)' },
+    { transform:'translateY(-8px)' },
+    { transform:'translateY(0px)' }
+  ], { duration:220, iterations:1, easing:'cubic-bezier(.2,.8,.2,1)' });
+}
+
+// animate on-screen key when physical key pressed or when tapped
+function animateKey(key){
+  // key might be full words like "Enter" or "Backspace" vs single letters
+  let keyToFind = key.toString();
+  if(keyToFind === 'Backspace' || keyToFind === '⌫') keyToFind = 'Backspace';
+  if(keyToFind === 'Enter') keyToFind = 'Enter';
+  // match visual label mapping (Backspace rendered as ⌫)
+  const keyEls = [...document.querySelectorAll('.key')];
+  const found = keyEls.find(k => {
+    const dk = k.dataset.key;
+    if(!dk) return false;
+    if(dk === 'Backspace' && (keyToFind === 'Backspace' || keyToFind === '⌫')) return true;
+    return dk.toUpperCase() === (keyToFind+"").toUpperCase();
+  });
+  if(found){
+    found.classList.add('pressed');
+    setTimeout(()=> found.classList.remove('pressed'), 120);
+  }
+}
+
+// ----- Physical keyboard support -----
+window.addEventListener('keydown', (e) => {
+  if(e.repeat) return; // ignore held down repeats
+  const k = e.key;
+  if(k === 'Enter'){
+    animateKey('Enter');
+    submitGuess();
+    return;
+  }
+  if(k === 'Backspace'){
+    animateKey('Backspace');
+    handleBackspace();
+    return;
+  }
+  // letters only
+  if(/^[a-zA-Z]$/.test(k)){
+    animateKey(k.toUpperCase());
+    insertLetter(k.toUpperCase());
+    return;
+  }
+});
+
+// Handle keyup to remove pressed class if some keyboards require it
+window.addEventListener('keyup', (e) => {
+  // remove pressed from all keys to be safe
+  document.querySelectorAll('.key.pressed').forEach(k=>k.classList.remove('pressed'));
+});
+
+// ----- Hint modal logic -----
+function updateHintText(){
+  // create a simple hint: length, first letter, masked with vowels shown/hidden
+  const len = targetKey.length;
+  const first = targetKey[0];
+  const masked = target.name.split('').map(ch=>{
+    if(/[AIEOUaieou]/.test(ch)) return '_';
+    if(/[^a-zA-Z]/.test(ch)) return ch;
+    return '_';
+  }).join('');
+  hintText.innerHTML = `
+    <strong>Card:</strong> ${masked} <br/>
+    <strong>Length:</strong> ${len} letters (spaces/punctuation removed) <br/>
+    <strong>First letter:</strong> ${first} <br/>
+    <em>Hint: Spaces and punctuation are removed. Type only letters.</em>
+  `;
+}
+hintBtn.addEventListener('click', ()=> {
+  updateHintText();
+  hintPanel.classList.add('show');
+  hintPanel.setAttribute('aria-hidden','false');
+});
+hintClose.addEventListener('click', ()=> {
+  hintPanel.classList.remove('show');
+  hintPanel.setAttribute('aria-hidden','true');
+});
+
+// close hint if clicked outside
+window.addEventListener('click', (e)=>{
+  if(e.target === hintPanel) {
+    hintPanel.classList.remove('show');
+    hintPanel.setAttribute('aria-hidden','true');
+  }
+});
+
+// Prevent accidental text selection and show mobile keyboard only when needed
+document.addEventListener('touchstart', ()=>{}, {passive:true});
+
+// initialize
+buildBoard();
+
+// Expose some convenience functions to window for debugging (optional)
+window.__clashle = {
+  targetName: ()=>target.name,
+  targetKey: ()=>targetKey,
+  addCard: (name)=> {
+    const k = normalizeName(name);
+    cardObjects.push({name, key:k});
+  }
+};
+</script>
+</body>
+</html>
