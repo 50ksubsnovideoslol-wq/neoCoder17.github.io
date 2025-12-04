@@ -1,7 +1,322 @@
-<title>Tribute to Sans!</title>
-<h1>Welcome!</h1>
-<h3>Yo, Yo!</h3>
-<h3>I am sans. sans the skeleton.</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The "Best" Clicker Game in the World</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --background-color: #ecf0f1;
+            --card-bg: #ffffff;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+        }
+
+        body {
+            font-family: sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            color: var(--secondary-color);
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .panel {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* --- Main Clicker Area --- */
+        #clicker-area {
+            grid-column: 1 / 2;
+            text-align: center;
+        }
+
+        #score-display {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        #stats-display {
+            font-size: 1rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        #main-click-button {
+            background-color: var(--primary-color);
+            border: none;
+            padding: 50px;
+            font-size: 2rem;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.3s;
+            box-shadow: 0 5px 0 #2980b9;
+        }
+
+        #main-click-button:hover {
+            background-color: #2980b9;
+        }
+
+        #main-click-button:active {
+            transform: translateY(5px);
+            box-shadow: 0 1px 0 #2980b9;
+        }
+
+        /* --- Upgrades --- */
+        #upgrades-area {
+            grid-column: 2 / 3;
+        }
+
+        .upgrade-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 0.3s;
+            font-size: 1rem;
+        }
+
+        .upgrade-button:hover:not(:disabled) {
+            background-color: #27ae60;
+        }
+
+        .upgrade-button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .upgrade-cost {
+            float: right;
+            font-weight: bold;
+        }
+        
+        /* --- Leaderboard & Save --- */
+        #leaderboard-save-area {
+            grid-column: 3 / 4;
+        }
+
+        .save-button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .save-button:hover {
+            background-color: #34495e;
+        }
+
+        .leaderboard-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid var(--background-color);
+        }
+
+        .leaderboard-entry strong {
+            color: var(--primary-color);
+        }
+        #save-status {
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    
+    <!-- Main Clicker Area -->
+    <div id="clicker-area" class="panel">
+        <h1>Click Empire</h1>
+        <div id="score-display">0 Clicks</div>
+        <div id="stats-display">CPC: 1 | CPS: 0</div>
+        <button id="main-click-button" onclick="clickAction()">Click Me!</button>
+    </div>
+
+    <!-- Upgrades Area -->
+    <div id="upgrades-area" class="panel">
+        <h2>Upgrades</h2>
+        <button id="upgrade-cpc-btn" class="upgrade-button" onclick="buyUpgrade('cpc')">
+            Better Cursor <span class="upgrade-cost" id="cpc-cost">10</span>
+        </button>
+        <button id="upgrade-cps-btn" class="upgrade-button" onclick="buyUpgrade('cps')">
+            Auto-Clicker Bot <span class="upgrade-cost" id="cps-cost">100</span>
+        </button>
+    </div>
+
+    <!-- Global Leaderboard & Save Data -->
+    <div id="leaderboard-save-area" class="panel">
+        <h2>Save Data</h2>
+        <button class="save-button" onclick="saveGame()">Save Game</button>
+        <button class="save-button" onclick="loadGame()">Load Game</button>
+        <button class="save-button" onclick="resetGame()">Reset Game</button>
+        <div id="save-status"></div>
+        
+        <h2>Global Leaderboard (Simulated)</h2>
+        <p>A true global leaderboard requires a server backend. This is a local high score example.</p>
+        <div class="leaderboard-entry">1. You: <strong id="local-high-score">0</strong> clicks</div>
+        <div class="leaderboard-entry">2. Player_99: <strong>5,421,123</strong></div>
+        <div class="leaderboard-entry">3. CookieMaster: <strong>1,200,500</strong></div>
+    </div>
+</div>
+
 <script>
-  window.alert(`Merry Christmas`);
+    // Game State Variables
+    let clicks = 0;
+    let clicksPerClick = 1;
+    let clicksPerSecond = 0;
+    let cpcUpgradeCost = 10;
+    let cpsUpgradeCost = 100;
+    let localHighScore = 0;
+
+    // DOM Elements
+    const scoreDisplay = document.getElementById('score-display');
+    const statsDisplay = document.getElementById('stats-display');
+    const cpcCostDisplay = document.getElementById('cpc-cost');
+    const cpsCostDisplay = document.getElementById('cps-cost');
+    const localHighScoreDisplay = document.getElementById('local-high-score');
+    const saveStatusDisplay = document.getElementById('save-status');
+
+    // Main Click Function
+    function clickAction() {
+        clicks += clicksPerClick;
+        updateDisplay();
+        checkUpgrades();
+    }
+
+    // Update the UI Displays
+    function updateDisplay() {
+        scoreDisplay.textContent = `${Math.floor(clicks).toLocaleString()} Clicks`;
+        statsDisplay.textContent = `CPC: ${clicksPerClick} | CPS: ${clicksPerSecond}`;
+        cpcCostDisplay.textContent = cpcUpgradeCost.toLocaleString();
+        cpsCostDisplay.textContent = cpsUpgradeCost.toLocaleString();
+        
+        if (clicks > localHighScore) {
+            localHighScore = clicks;
+            localHighScoreDisplay.textContent = Math.floor(localHighScore).toLocaleString();
+        }
+    }
+
+    // Check if upgrade buttons should be enabled/disabled
+    function checkUpgrades() {
+        document.getElementById('upgrade-cpc-btn').disabled = clicks < cpcUpgradeCost;
+        document.getElementById('upgrade-cps-btn').disabled = clicks < cpsUpgradeCost;
+    }
+
+    // Buy Upgrades Logic
+    function buyUpgrade(type) {
+        if (type === 'cpc' && clicks >= cpcUpgradeCost) {
+            clicks -= cpcUpgradeCost;
+            clicksPerClick += 1;
+            cpcUpgradeCost = Math.floor(cpcUpgradeCost * 1.5);
+        } else if (type === 'cps' && clicks >= cpsUpgradeCost) {
+            clicks -= cpsUpgradeCost;
+            clicksPerSecond += 1;
+            cpsUpgradeCost = Math.floor(cpsUpgradeCost * 1.8);
+        }
+        updateDisplay();
+        checkUpgrades();
+    }
+
+    // Game Loop (Auto Clicks per Second)
+    setInterval(() => {
+        clicks += clicksPerSecond;
+        updateDisplay();
+        checkUpgrades();
+    }, 1000); // Runs every second
+
+    // --- Save/Load/Reset Game Functions ---
+
+    function saveGame() {
+        const gameState = {
+            clicks: clicks,
+            clicksPerClick: clicksPerClick,
+            clicksPerSecond: clicksPerSecond,
+            cpcUpgradeCost: cpcUpgradeCost,
+            cpsUpgradeCost: cpsUpgradeCost,
+            highScore: localHighScore
+        };
+        localStorage.setItem('bestClickerGameSave', JSON.stringify(gameState));
+        showStatus("Game Saved Locally!", "var(--success-color)");
+    }
+
+    function loadGame() {
+        const savedData = localStorage.getItem('bestClickerGameSave');
+        if (savedData) {
+            const gameState = JSON.parse(savedData);
+            clicks = gameState.clicks || 0;
+            clicksPerClick = gameState.clicksPerClick || 1;
+            clicksPerSecond = gameState.clicksPerSecond || 0;
+            cpcUpgradeCost = gameState.cpcUpgradeCost || 10;
+            cpsUpgradeCost = gameState.cpsUpgradeCost || 100;
+            localHighScore = gameState.highScore || 0;
+            updateDisplay();
+            checkUpgrades();
+            showStatus("Game Loaded!", "var(--success-color)");
+        } else {
+            showStatus("No saved game found.", "var(--error-color)");
+        }
+    }
+
+    function resetGame() {
+        if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
+            localStorage.removeItem('bestClickerGameSave');
+            clicks = 0;
+            clicksPerClick = 1;
+            clicksPerSecond = 0;
+            cpcUpgradeCost = 10;
+            cpsUpgradeCost = 100;
+            // High score might persist locally or reset depending on preference, here we reset it for clean slate
+            localHighScore = 0; 
+            updateDisplay();
+            checkUpgrades();
+            showStatus("Game Reset!", "var(--error-color)");
+        }
+    }
+
+    function showStatus(message, color) {
+        saveStatusDisplay.textContent = message;
+        saveStatusDisplay.style.color = color;
+        setTimeout(() => {
+            saveStatusDisplay.textContent = '';
+        }, 3000);
+    }
+
+    // Initialize game on load
+    window.onload = () => {
+        loadGame(); // Attempt to load save on page load
+        updateDisplay();
+        checkUpgrades();
+    };
+
 </script>
+
+</body>
+</html>
