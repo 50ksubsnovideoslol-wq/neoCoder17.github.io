@@ -11,10 +11,12 @@
             --card-bg: #ffffff;
             --button-color: #2ecc71;
             --text-color: #2c3e50;
+            --rare-color: #f39c12;
+            --legendary-color: #e74c3c;
         }
 
         body {
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--shop-bg);
             margin: 0;
             padding: 20px;
@@ -25,21 +27,22 @@
 
         .game-container {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1.5fr 1fr 1.5fr;
             gap: 20px;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1300px;
         }
 
         .panel {
             background-color: var(--card-bg);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
         }
 
-        h1, h2 {
+        h1, h2, h3 {
             margin-top: 0;
+            color: var(--text-color);
         }
 
         /* --- Fishing Area --- */
@@ -48,14 +51,16 @@
         }
 
         #money-display {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: bold;
             color: var(--water-color);
+            margin-bottom: 10px;
         }
         
-        #fish-caught-display {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
+        #stats-display {
+            font-size: 1rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
         }
 
         #cast-button {
@@ -66,10 +71,11 @@
             color: white;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, transform 0.1s;
             margin-top: 10px;
         }
         #cast-button:hover { background-color: #2980b9; }
+        #cast-button:active { transform: translateY(2px); }
 
         #fish-log {
             margin-top: 20px;
@@ -80,17 +86,17 @@
             text-align: left;
             font-size: 0.9rem;
             background-color: var(--shop-bg);
+            border-radius: 5px;
         }
         .log-common { color: var(--text-color); }
-        .log-rare { color: #f39c12; font-weight: bold; }
-        .log-legendary { color: #e74c3c; font-weight: bold; font-size: 1rem; }
+        .log-rare { color: var(--rare-color); font-weight: bold; }
+        .log-legendary { color: var(--legendary-color); font-weight: bold; font-size: 1rem; }
 
         /* --- Lake Area --- */
         #lake-area {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between;
         }
 
         #lake {
@@ -98,9 +104,10 @@
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(10, 1fr);
             width: 100%;
-            max-width: 300px;
+            max-width: 350px;
             aspect-ratio: 1 / 1;
-            border: 5px solid var(--water-color);
+            border: 8px solid var(--water-color);
+            box-shadow: inset 0 0 20px rgba(0,0,100,0.3);
         }
 
         .water-square {
@@ -109,7 +116,6 @@
             transition: background-color 0.5s;
         }
 
-        /* Food effect visualization */
         .water-square.fed {
             background-color: #76d2a3; /* Greenish tint for food */
         }
@@ -120,8 +126,8 @@
             color: var(--button-color);
         }
 
-        /* --- Shop Area --- */
-        .shop-item {
+        /* --- Shop & Inventory Area --- */
+        .shop-item, .inventory-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -136,11 +142,24 @@
             color: white;
             border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
+
+        .shop-button:hover:not(:disabled) { background-color: #27ae60; }
 
         .shop-button:disabled {
             background-color: #95a5a6;
             cursor: not-allowed;
+        }
+
+        .equipped-gear {
+            font-weight: bold;
+            color: var(--water-color);
+            margin-bottom: 10px;
+        }
+        #inventory-list {
+            max-height: 150px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -150,9 +169,9 @@
     
     <!-- Fishing Area -->
     <div id="fishing-area" class="panel">
-        <h1>Fishing Dock</h1>
+        <h1>🎣 The Ultimate Fish Clicker</h1>
         <div id="money-display">$0</div>
-        <div id="fish-caught-display">Total Fish Caught: 0</div>
+        <div id="stats-display">Rod: Basic | Bait: Worms | AutoCast: Off</div>
         <button id="cast-button" onclick="castLine()">Cast Line</button>
         <h3>Fishing Log</h3>
         <div id="fish-log"></div>
@@ -160,41 +179,53 @@
 
     <!-- Lake Area -->
     <div id="lake-area" class="panel">
-        <h2>The Lake</h2>
+        <h2>The Lake Visual</h2>
         <div id="lake">
             <!-- Squares generated by JS -->
         </div>
         <div id="food-status">Lake Status: Normal</div>
+        <h3>Save & Load</h3>
+        <button class="shop-button" onclick="saveGame()">💾 Save Game</button>
+        <button class="shop-button" onclick="loadGame()">📂 Load Game</button>
+        <button class="shop-button" onclick="resetGame()">❌ Reset Game</button>
+        <p><small>Progress is saved automatically every 30 seconds to your browser.</small></p>
     </div>
 
-    <!-- Shop Area -->
+    <!-- Shop & Inventory Area -->
     <div id="shop-area" class="panel">
         <h2>The Tackle Shop</h2>
-
-        <h3>Rods</h3>
-        <div class="shop-item">
-            <span>Better Rod (Tier 2)</span>
-            <button class="shop-button" id="buy-rod-2" onclick="buyRod(2)">$500</button>
-        </div>
-        <div class="shop-item">
-            <span>Pro Carbon Rod (Tier 3)</span>
-            <button class="shop-button" id="buy-rod-3" onclick="buyRod(3)">$5000</button>
+        <div class="equipped-gear">
+            Current Rod Tier: <span id="current-rod-tier">1</span> | Current Bait Tier: <span id="current-bait-tier">1</span>
         </div>
 
-        <h3>Baits</h3>
+        <h3>Rods (Better Rods = Higher Base Rarity Chance)</h3>
         <div class="shop-item">
-            <span>Deluxe Worms (Tier 2 Bait)</span>
-            <button class="shop-button" id="buy-bait-2" onclick="buyBait(2)">$50</button>
+            <span>Graphite Rod (T2)</span>
+            <button class="shop-button" id="buy-rod-2" onclick="buyItem('rod', 2, 500)">$500</button>
         </div>
         <div class="shop-item">
-            <span>Luminous Lure (Tier 3 Bait)</span>
-            <button class="shop-button" id="buy-bait-3" onclick="buyBait(3)">$250</button>
+            <span>Pro Carbon Rod (T3)</span>
+            <button class="shop-button" id="buy-rod-3" onclick="buyItem('rod', 3, 5000)">$5,000</button>
         </div>
 
-        <h3>Fish Food</h3>
+        <h3>Baits (Better Baits = Higher *Multiplier* on Rarity Chance)</h3>
         <div class="shop-item">
-            <span>Place Fish Food (+5% Rare Chance)</span>
+            <span>Deluxe Worms (T2 Bait)</span>
+            <button class="shop-button" id="buy-bait-2" onclick="buyItem('bait', 2, 50)">$50</button>
+        </div>
+        <div class="shop-item">
+            <span>Luminous Lure (T3 Bait)</span>
+            <button class="shop-button" id="buy-bait-3" onclick="buyItem('bait', 3, 250)">$250</button>
+        </div>
+
+        <h3>Utilities</h3>
+         <div class="shop-item">
+            <span>Place Fish Food (+5% Rare Chance Perm.)</span>
             <button class="shop-button" onclick="buyFood()">$100</button>
+        </div>
+         <div class="shop-item">
+            <span>Auto-Caster 🤖 (Fish every 5 sec)</span>
+            <button class="shop-button" id="buy-autocaster" onclick="buyAutoCaster()">$1000</button>
         </div>
     </div>
 </div>
@@ -203,41 +234,50 @@
     // --- Game State Variables ---
     let money = 0;
     let totalFishCaught = 0;
-    let rodTier = 1; // 1 (basic), 2 (better), 3 (pro)
-    let baitTier = 1; // 1 (worms), 2 (deluxe), 3 (lure)
+    let rodTier = 1; 
+    let baitTier = 1; 
     let foodLevel = 0; // Cumulative percentage bonus
-    let baseRareChance = 0.05; // 5% base chance for rare+
+    let hasAutoCaster = false;
+    let autoCasterInterval = null;
 
-    // --- Fish Data ---
+    // --- Fish Data (Increased variety and clear rarities) ---
     const fishData = {
         common: [
-            { name: "Sardine", value: 1, rarity: "common" },
-            { name: "Tuna", value: 5, rarity: "common" },
-            { name: "Bass", value: 3, rarity: "common" }
+            { name: "Sardine 🐟", value: 1, rarity: "common" },
+            { name: "Tuna 🐠", value: 5, rarity: "common" },
+            { name: "Bass 🎣", value: 3, rarity: "common" },
+            { name: "Carp", value: 2, rarity: "common" },
+            { name: "Mackerel", value: 4, rarity: "common" }
         ],
         rare: [
-            { name: "Shark", value: 50, rarity: "rare" },
-            { name: "Swordfish", value: 75, rarity: "rare" },
-            { name: "Marlin", value: 100, rarity: "rare" }
+            { name: "Shark 🦈", value: 50, rarity: "rare" },
+            { name: "Swordfish 🗡️", value: 75, rarity: "rare" },
+            { name: "Marlin", value: 100, rarity: "rare" },
+            { name: "Dolphin 🐬", value: 120, rarity: "rare" }
         ],
         legendary: [
-            { name: "Coelacanth", value: 500, rarity: "legendary" },
-            { name: "Megalodon Tooth (Artifact)", value: 5000, rarity: "legendary" } // Megalodon is extinct, so we find an artifact!
+            { name: "Coelacanth 🦖", value: 500, rarity: "legendary" },
+            { name: "Megalodon Tooth (Artifact) 💎", value: 5000, rarity: "legendary" },
+            { name: "The Kraken's Eye 🐙", value: 10000, rarity: "legendary" }
         ]
     };
 
     // --- DOM Elements ---
     const moneyDisplay = document.getElementById('money-display');
-    const fishCaughtDisplay = document.getElementById('fish-caught-display');
+    const statsDisplay = document.getElementById('stats-display');
     const fishLog = document.getElementById('fish-log');
     const lakeElement = document.getElementById('lake');
     const foodStatusDisplay = document.getElementById('food-status');
+    const currentRodTierDisplay = document.getElementById('current-rod-tier');
+    const currentBaitTierDisplay = document.getElementById('current-bait-tier');
+
 
     // --- Initialization ---
     generateLakeVisual();
-    loadGame();
+    loadGame(); // Load from localStorage on startup
     updateDisplay();
     checkShopButtons();
+
 
     function generateLakeVisual() {
         for (let i = 0; i < 100; i++) {
@@ -249,28 +289,37 @@
 
     // --- Game Mechanics ---
     function castLine() {
-        // Calculate dynamic rare chance
-        // Base: 5%, Rod T2: +5%, Rod T3: +10%
-        // Bait T2: +3%, Bait T3: +8%
-        // Food: +X%
-        let currentRareChance = baseRareChance;
-        if (rodTier === 2) currentRareChance += 0.05;
-        if (rodTier === 3) currentRareChance += 0.10;
-        if (baitTier === 2) currentRareChance += 0.03;
-        if (baitTier === 3) currentRareChance += 0.08;
+        // Prevent manual clicking if autocaster is on for user clarity
+        if (hasAutoCaster && !event.isTrusted) return; 
+
+        let baseRareChance = 0.05; // 5%
+
+        // Rod Bonus: T1: +0%, T2: +5%, T3: +12%
+        if (rodTier === 2) baseRareChance += 0.05;
+        if (rodTier === 3) baseRareChance += 0.12;
+
+        // Bait Multiplier: T1: x1, T2: x1.5, T3: x2.5
+        let baitMultiplier = 1;
+        if (baitTier === 2) baitMultiplier = 1.5;
+        if (baitTier === 3) baitMultiplier = 2.5;
+
+        // Total rare chance calculation
+        let currentRareChance = baseRareChance * baitMultiplier;
+        
+        // Food Level adds a flat percentage boost
         currentRareChance += (foodLevel / 100);
 
         let fishCaught;
         const roll = Math.random();
 
-        // 0.5% chance for legendary *within* the rare catch probability area
-        const legendaryThreshold = currentRareChance * 0.1; // 10% of the rare chance goes to legendary
+        // 10% of the *total* rare chance is dedicated to checking for legendary fish
+        const legendaryThreshold = currentRareChance * 0.10; 
 
         if (roll < currentRareChance) {
-            // Check for legendary
+            // Check for legendary within the rare range
             if (roll < legendaryThreshold) {
                 fishCaught = fishData.legendary[Math.floor(Math.random() * fishData.legendary.length)];
-                window.alert(`🎉 LEGENDARY CATCH! You caught a ${fishCaught.name}! Wow! 🎉`);
+                window.alert(`🎉 LEGENDARY CATCH! You caught a ${fishCaught.name}! This is incredibly rare! 🎉`);
             } else {
                 fishCaught = fishData.rare[Math.floor(Math.random() * fishData.rare.length)];
                 window.alert(`🎣 Rare Catch! You reeled in a ${fishCaught.name}!`);
@@ -290,7 +339,7 @@
     function logCatch(fish) {
         const logEntry = document.createElement('div');
         logEntry.classList.add(`log-${fish.rarity}`);
-        logEntry.textContent = `Caught a ${fish.name}! Sold for $${fish.value}.`;
+        logEntry.textContent = `${fish.name} caught! Sold for $${fish.value}.`;
         fishLog.prepend(logEntry); // Add to the top of the log
 
         // Keep log clean
@@ -301,32 +350,26 @@
 
     function updateDisplay() {
         moneyDisplay.textContent = `$${Math.floor(money).toLocaleString()}`;
-        fishCaughtDisplay.textContent = `Total Fish Caught: ${totalFishCaught.toLocaleString()}`;
-        foodStatusDisplay.textContent = `Lake Status: +${foodLevel}% Rare Chance`;
-        // Update local high score (leaderboard placeholder)
-        document.getElementById('local-high-score').textContent = Math.floor(money).toLocaleString(); 
+        statsDisplay.textContent = `Rod T${rodTier} | Bait T${baitTier} | AutoCast: ${hasAutoCaster ? 'ON' : 'OFF'}`;
+        foodStatusDisplay.textContent = `Lake Status: +${foodLevel}% Permanent Rare Chance`;
+        currentRodTierDisplay.textContent = rodTier;
+        currentBaitTierDisplay.textContent = baitTier;
     }
 
     // --- Shop Functions ---
-    function buyRod(tier) {
-        let cost = tier === 2 ? 500 : 5000;
-        if (money >= cost && rodTier < tier) {
-            money -= cost;
-            rodTier = tier;
+    function buyItem(type, tier, cost) {
+        if (money >= cost) {
+            if (type === 'rod' && rodTier < tier) {
+                money -= cost;
+                rodTier = tier;
+                logCatch({name: `Rod T${tier} purchased`, value: 0, rarity: 'rare'});
+            } else if (type === 'bait' && baitTier < tier) {
+                money -= cost;
+                baitTier = tier;
+                logCatch({name: `Bait T${tier} purchased`, value: 0, rarity: 'rare'});
+            }
             checkShopButtons();
             updateDisplay();
-            logCatch({name: `Tier ${tier} Rod purchased`, value: 0, rarity: 'rare'});
-        }
-    }
-
-    function buyBait(tier) {
-        let cost = tier === 2 ? 50 : 250;
-        if (money >= cost && baitTier < tier) {
-            money -= cost;
-            baitTier = tier;
-            checkShopButtons();
-            updateDisplay();
-            logCatch({name: `Tier ${tier} Bait purchased`, value: 0, rarity: 'rare'});
         }
     }
 
@@ -334,18 +377,41 @@
         const cost = 100;
         if (money >= cost) {
             money -= cost;
-            foodLevel += 5; // Permanent 5% increase
+            foodLevel += 5; // Permanent 5% increase in rare chance
             updateDisplay();
             animateLakeFood();
-            logCatch({name: `Fish food placed in lake`, value: 0, rarity: 'common'});
+            logCatch({name: `Fish food placed in lake (+5% chance)`, value: 0, rarity: 'common'});
         }
     }
+
+    function buyAutoCaster() {
+        const cost = 1000;
+        if (money >= cost && !hasAutoCaster) {
+            money -= cost;
+            hasAutoCaster = true;
+            startAutoCaster();
+            checkShopButtons();
+            updateDisplay();
+            logCatch({name: `Auto-Caster purchased!`, value: 0, rarity: 'legendary'});
+        }
+    }
+
+    function startAutoCaster() {
+        if (autoCasterInterval === null) {
+            // "Casts" a line every 5 seconds (5000ms)
+            autoCasterInterval = setInterval(() => {
+                castLine(); 
+            }, 5000);
+        }
+    }
+
 
     function checkShopButtons() {
         document.getElementById('buy-rod-2').disabled = money < 500 || rodTier >= 2;
         document.getElementById('buy-rod-3').disabled = money < 5000 || rodTier >= 3;
         document.getElementById('buy-bait-2').disabled = money < 50 || baitTier >= 2;
         document.getElementById('buy-bait-3').disabled = money < 250 || baitTier >= 3;
+        document.getElementById('buy-autocaster').disabled = money < 1000 || hasAutoCaster;
     }
 
     function animateLakeFood() {
@@ -359,7 +425,7 @@
     }
 
     // --- Save/Load/Reset Game Functions ---
-    // Added these functions back in from the original request, using a new key.
+    // Uses localStorage for persistent data
 
     function saveGame() {
         const gameState = {
@@ -368,14 +434,14 @@
             rodTier,
             baitTier,
             foodLevel,
-            highScore: money // Using current money as high score for local leaderboard sim
+            hasAutoCaster
         };
-        localStorage.setItem('fishClickerGameSave', JSON.stringify(gameState));
-        console.log("Game Saved Locally!");
+        localStorage.setItem('fishClickerGameSaveV2', JSON.stringify(gameState));
+        // Simple visual confirmation might be nice
     }
 
     function loadGame() {
-        const savedData = localStorage.getItem('fishClickerGameSave');
+        const savedData = localStorage.getItem('fishClickerGameSaveV2');
         if (savedData) {
             const gameState = JSON.parse(savedData);
             money = gameState.money || 0;
@@ -383,12 +449,34 @@
             rodTier = gameState.rodTier || 1;
             baitTier = gameState.baitTier || 1;
             foodLevel = gameState.foodLevel || 0;
-            // localHighScore is handled by updateDisplay tracking current money
-            console.log("Game Loaded!");
+            hasAutoCaster = gameState.hasAutoCaster || false;
+            
+            if (hasAutoCaster) {
+                startAutoCaster();
+            }
+            updateDisplay();
+            checkShopButtons();
         }
     }
     
-    // Save game every 30 seconds automatically
+    function resetGame() {
+        if (confirm("Are you sure you want to reset all progress? This is permanent.")) {
+            localStorage.removeItem('fishClickerGameSaveV2');
+            clearInterval(autoCasterInterval);
+            autoCasterInterval = null;
+            money = 0;
+            totalFishCaught = 0;
+            rodTier = 1;
+            baitTier = 1;
+            foodLevel = 0;
+            hasAutoCaster = false;
+            updateDisplay();
+            checkShopButtons();
+            logCatch({name: "Game progress wiped!", value: 0, rarity: 'legendary'});
+        }
+    }
+
+    // Automatic saving every 30 seconds
     setInterval(saveGame, 30000);
 
 </script>
