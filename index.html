@@ -5,7 +5,6 @@
 <title>3D Circular Audio Visualizer</title>
 
 <style>
-
 body{
 margin:0;
 background:black;
@@ -25,18 +24,13 @@ input{
 margin-top:5px;
 padding:6px;
 }
-
 </style>
-
 </head>
 
 <body>
 
 <div id="ui">
-
 <input type="file" id="fileInput"><br>
-<input type="text" id="ytLink" placeholder="YouTube link"><br>
-
 </div>
 
 <audio id="audio" controls style="position:absolute;bottom:10px;left:10px;"></audio>
@@ -46,85 +40,92 @@ padding:6px;
 <script>
 
 let scene = new THREE.Scene();
-
-let camera = new THREE.PerspectiveCamera(
-75,
-window.innerWidth/window.innerHeight,
-0.1,
-1000
-);
-
+let camera = new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
 let renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth,window.innerHeight);
 
+renderer.setSize(window.innerWidth,window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 camera.position.set(0,8,12);
 
-let bars = [];
-let barCount = 128;
-let radius = 6;
+let bars=[];
+let barCount=128;
+let radius=6;
 
 for(let i=0;i<barCount;i++){
 
-let geometry = new THREE.BoxGeometry(0.3,1,0.3);
+let geometry=new THREE.BoxGeometry(0.3,1,0.3);
 
-let material = new THREE.MeshBasicMaterial({
+let material=new THREE.MeshBasicMaterial({
 color:new THREE.Color(`hsl(${i*3},100%,60%)`)
 });
 
-let bar = new THREE.Mesh(geometry,material);
+let bar=new THREE.Mesh(geometry,material);
 
-let angle = (i/barCount)*Math.PI*2;
+let angle=(i/barCount)*Math.PI*2;
 
-bar.position.x = Math.cos(angle)*radius;
-bar.position.z = Math.sin(angle)*radius;
+bar.position.x=Math.cos(angle)*radius;
+bar.position.z=Math.sin(angle)*radius;
 
 scene.add(bar);
-
 bars.push(bar);
 
 }
 
-let ringGeometry = new THREE.RingGeometry(5.8,6,128);
-let ringMaterial = new THREE.MeshBasicMaterial({
-color:0x00ffff,
-side:THREE.DoubleSide
-});
+let ringGeometry=new THREE.RingGeometry(5.8,6,128);
+let ringMaterial=new THREE.MeshBasicMaterial({color:0x00ffff,side:THREE.DoubleSide});
 
-let ring = new THREE.Mesh(ringGeometry,ringMaterial);
-ring.rotation.x = -Math.PI/2;
+let ring=new THREE.Mesh(ringGeometry,ringMaterial);
+ring.rotation.x=-Math.PI/2;
 
 scene.add(ring);
 
-let audio = document.getElementById("audio");
+let audio=document.getElementById("audio");
 
-let audioCtx = new AudioContext();
-let analyser = audioCtx.createAnalyser();
+let audioCtx=new AudioContext();
+let analyser=audioCtx.createAnalyser();
 
-analyser.fftSize = 256;
+analyser.fftSize=256;
 
-let bufferLength = analyser.frequencyBinCount;
-let dataArray = new Uint8Array(bufferLength);
+let dataArray=new Uint8Array(analyser.frequencyBinCount);
 
-let source = audioCtx.createMediaElementSource(audio);
+let source=audioCtx.createMediaElementSource(audio);
 
 source.connect(analyser);
 analyser.connect(audioCtx.destination);
 
-document.getElementById("fileInput").addEventListener("change",function(e){
+const fileInput=document.getElementById("fileInput");
 
-let file = e.target.files[0];
+fileInput.addEventListener("change",function(e){
+
+let file=e.target.files[0];
 
 if(file){
 
-audio.src = URL.createObjectURL(file);
+let url=URL.createObjectURL(file);
+
+audio.src=url;
 audio.play();
 audioCtx.resume();
+
+localStorage.setItem("lastSong",url);
 
 }
 
 });
+
+window.onload=function(){
+
+let lastSong=localStorage.getItem("lastSong");
+
+if(lastSong){
+
+audio.src=lastSong;
+audio.play();
+
+}
+
+};
 
 function animate(){
 
@@ -134,15 +135,14 @@ analyser.getByteFrequencyData(dataArray);
 
 for(let i=0;i<bars.length;i++){
 
-let value = dataArray[i]*0.05;
+let value=dataArray[i]*0.05;
 
-bars[i].scale.y = Math.max(0.2,value);
-
-bars[i].position.y = bars[i].scale.y/2;
+bars[i].scale.y=Math.max(0.2,value);
+bars[i].position.y=bars[i].scale.y/2;
 
 }
 
-scene.rotation.y += 0.002;
+scene.rotation.y+=0.002;
 
 renderer.render(scene,camera);
 
