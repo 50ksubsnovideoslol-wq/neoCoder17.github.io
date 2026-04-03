@@ -1,0 +1,5 @@
+{
+  "name": "GD Level Sync Generator",
+  "description": "Generate a playable Geometry Dash (.gmd) level synced to your MP3 music using rhythm analysis.",
+  "requestFramePermissions": []
+}
